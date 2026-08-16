@@ -10,8 +10,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Servir la carpeta 'public' para los archivos estaticos
-app.use(express.static(path.join(__dirname, 'public')));
+// Servir archivos estáticos directamente desde la raíz del proyecto
+app.use(express.static(__dirname));
 
 // --- 2. CONEXION A MONGO DB ---
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/futuroyo';
@@ -68,9 +68,9 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Ruta fallback compatible con Express 5
+// Ruta fallback compatible con Express 5 apuntando a la raíz
 app.get('/{0,}', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // --- 5. PUERTO PARA RENDER ---
