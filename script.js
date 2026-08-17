@@ -255,7 +255,7 @@ function crearGrafico() {
     });
 }
 
-// --- ASISTENTE VIRTUAL (CHATBOT) ---
+// --- ASISTENTE VIRTUAL INTELIGENTE (CHATBOT CON IA) ---
 
 function abrirChat() {
     document.getElementById("ventanaChat").style.display = "block";
@@ -265,45 +265,78 @@ function cerrarChat() {
     document.getElementById("ventanaChat").style.display = "none";
 }
 
-function enviarPregunta() {
-    let pregunta = document.getElementById("pregunta").value.toLowerCase();
+async function enviarPregunta() {
+    let preguntaInput = document.getElementById("pregunta");
+    let pregunta = preguntaInput.value.trim();
 
-    if (pregunta == "") return;
+    if (pregunta === "") return;
 
     let mensajes = document.getElementById("mensajes");
 
-    mensajes.innerHTML += `
-        <div class="usuario">
-            ${pregunta}
-        </div>
-    `;
+    // 1. Mostrar mensaje del usuario
+    mensajes.innerHTML += `<div class="usuario">${pregunta}</div>`;
 
-    let respuesta = "No entendí tu pregunta.";
+    // 2. Indicador de carga
+    let tempId = "msg-" + Date.now();
+    mensajes.innerHTML += `<div class="bot" id="${tempId}"><em>Pensando...</em></div>`;
+    mensajes.scrollTop = mensajes.scrollHeight;
+    preguntaInput.value = "";
 
-    if (pregunta.includes("ahorro")) {
-        respuesta = "Una buena meta es ahorrar entre el 10% y el 20% de tus ingresos mensuales.";
-    } else if (pregunta.includes("gasto")) {
-        respuesta = "Registra todos tus gastos para saber en qué utilizas tu dinero.";
-    } else if (pregunta.includes("presupuesto")) {
-        respuesta = "Primero separa el dinero para ahorrar y luego administra el resto para tus gastos.";
-    } else if (pregunta.includes("hola")) {
-        respuesta = "¡Hola! ¿En qué puedo ayudarte?";
-    } else if (pregunta.includes("consejo")) {
-        respuesta = "Evita las compras impulsivas y fija metas de ahorro cada mes.";
-    } else if (pregunta.includes("meta")) {
-        respuesta = "Una meta de ahorro debe ser realista y acorde a tus ingresos.";
-    } else if (pregunta.includes("dinero")) {
-        respuesta = "Controlar tus ingresos y gastos es el primer paso para mejorar tus finanzas.";
-    } else if (pregunta.includes("gracias")) {
-        respuesta = "¡Con gusto! Estoy para ayudarte.";
+    // -------------------------------------------------------------
+    // PEGA AQUÍ TU API KEY (Debe empezar con "AIzaSy...")
+    const API_KEY = "PEGA_AQUI_TU_API_KEY"; 
+    // -------------------------------------------------------------
+
+    let totalGastado = gastos.reduce((acc, g) => acc + g.monto, 0);
+
+    // RESPUESTA DE RESPALDO (Si no hay clave o es tipo 'AQ.')
+    if (!API_KEY || API_KEY.startsWith("AQ.") || API_KEY === "PEGA_AQUI_TU_API_KEY") {
+        let texto = pregunta.toLowerCase();
+        let respuestaLocal = "";
+
+        if (texto.includes("ahorro") || texto.includes("ahorrar")) {
+            respuestaLocal = `Tu meta de ahorro actual es de ₡${metaAhorro}. Te recomiendo separar esta cantidad apenas recibas tu ingreso.`;
+        } else if (texto.includes("gasto") || texto.includes("gastos")) {
+            respuestaLocal = `Has registrado un total de ₡${totalGastado} en gastos. Revisa la gráfica para más detalles.`;
+        } else if (texto.includes("presupuesto") || texto.includes("disponible") || texto.includes("saldo")) {
+            respuestaLocal = `Tu ingreso es de ₡${ingresoMensual} y cuentas con ₡${dineroDisponible} disponibles tras restar ahorros y gastos.`;
+        } else {
+            respuestaLocal = "¡Hola! Cuentas con mi ayuda. Puedes preguntarme sobre tu 'ahorro', tus 'gastos' o tu 'presupuesto disponible'.";
+        }
+
+        setTimeout(() => {
+            document.getElementById(tempId).innerText = respuestaLocal;
+            mensajes.scrollTop = mensajes.scrollHeight;
+        }, 400);
+        return;
     }
 
-    mensajes.innerHTML += `
-        <div class="bot">
-            ${respuesta}
-        </div>
-    `;
+    // SI LA CLAVE ES VÁLIDA (AIzaSy...), LLAMA A GEMINI AI
+    const promptText = `Eres el asistente financiero inteligente de FuturoYo.
+Responde de forma amable, práctica y breve (máximo 3 oraciones).
+Contexto del usuario: Ingreso: ₡${ingresoMensual}, Meta Ahorro: ₡${metaAhorro}, Disponible: ₡${dineroDisponible}, Gastado: ₡${totalGastado}.
+Pregunta: "${pregunta}"`;
+
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: promptText }] }]
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            document.getElementById(tempId).innerText = "Error API: " + data.error.message;
+        } else {
+            const respuestaBot = data.candidates?.[0]?.content?.parts?.[0]?.text || "No pude generar una respuesta.";
+            document.getElementById(tempId).innerText = respuestaBot;
+        }
+    } catch (error) {
+        document.getElementById(tempId).innerText = "Error al conectar con el servidor.";
+    }
 
     mensajes.scrollTop = mensajes.scrollHeight;
-    document.getElementById("pregunta").value = "";
 }
