@@ -1,78 +1,45 @@
-async function iniciarSesion() {
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.querySelector('form');
 
-    // Obtener los datos del formulario
-    const correo = document.getElementById("correo").value;
-    const contrasena = document.getElementById("contrasena").value;
+  if (!form) return;
 
-    const mensaje = document.getElementById("mensaje");
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-    // Comprobar que los campos estén llenos
-    if (correo === "" || contrasena === "") {
+    // Capturar campos del formulario de login
+    const emailInput = document.querySelector('input[type="email"]');
+    const passwordInput = document.querySelector('input[type="password"]');
 
-        mensaje.innerText = "Complete todos los campos.";
-        mensaje.style.color = "red";
+    const email = emailInput ? emailInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value.trim() : '';
 
-        return;
+    if (!email || !password) {
+      alert('Por favor ingresa tu correo y contraseña.');
+      return;
     }
 
     try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
 
-        // Enviar los datos al servidor
-        const respuesta = await fetch("https://futuroyo.onrender.com/registro")
+      const data = await response.json();
 
-            method: "POST",
-
-            headers: {
-                "Content-Type": "application/json"
-            },
-
-            body: JSON.stringify({
-
-                correo: correo,
-                contrasena: contrasena
-
-            })
-
-        });
-
-        // Recibir respuesta del servidor
-        const datos = await respuesta.json();
-
-        // Comprobar resultado
-        if (datos.ok) {
-
-            mensaje.innerText = "Inicio de sesión correcto.";
-            mensaje.style.color = "green";
-
-            // Guardar los datos del usuario
-            localStorage.setItem(
-                "usuario",
-                JSON.stringify(datos.usuario)
-            );
-
-            // Esperar un momento y entrar a FuturoYO
-            setTimeout(function() {
-
-                window.location.href = "index.html";
-
-            }, 1000);
-
-        } else {
-
-            mensaje.innerText = datos.mensaje;
-            mensaje.style.color = "red";
-
-        }
-
+      if (response.ok && data.exito) {
+        alert('¡Inicio de sesión exitoso!');
+        // Guardar datos del usuario en el navegador
+        localStorage.setItem('usuario', JSON.stringify(data.usuario));
+        window.location.href = 'index.html';
+      } else {
+        alert(data.mensaje || data.error || 'Credenciales incorrectas');
+      }
     } catch (error) {
-
-        console.error(error);
-
-        mensaje.innerText =
-            "No se pudo conectar con el servidor.";
-
-        mensaje.style.color = "red";
-
+      console.error('Error en el login:', error);
+      alert('Ocurrió un error al conectar con el servidor.');
     }
-
-}
+  });
+});
