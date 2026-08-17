@@ -9,74 +9,114 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Servir archivos estaticos directamente desde la raiz del proyecto
 app.use(express.static(__dirname));
 
-// --- 2. CONEXION A MONGO DB ---
-// REEMPLAZA TU_CONTRASEÑA_REAL POR TU CONTRASEÑA DE MONGODB ATLAS
+// --- 2. CONEXIÓN A MONGO DB ---
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://danialbertogm18_db_user:JZbhKTbGD5yFYwKC@cluster0.ycq5pnn.mongodb.net/futuroyo?retryWrites=true&w=majority';
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('Conectado exitosamente a MongoDB Atlas'))
-  .catch((err) => {
-    console.error('Error al conectar a MongoDB:', err.message);
-  });
+  .catch((err) => console.error('Error al conectar a MongoDB:', err.message));
 
-// --- 3. ESQUEMA Y MODELO ---
+// --- 3. ESQUEMAS Y MODELOS ---
 const UsuarioSchema = new mongoose.Schema({
   nombre: String,
   email: String,
   password: String
 });
 
-const Usuario = mongoose.models.Usuario || mongoose.model('Usuario', UsuarioSchema);
-
-// --- 4. RUTAS DE LA API ---
-
-// Ruta de prueba
-app.get('/api/ping', (req, res) => {
-  res.json({ mensaje: 'API de FuturoYo funcionando correctamente' });
+const DatosFinancierosSchema = new mongoose.Schema({
+  usuarioId: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true, unique: true },
+  ingresoMensual: { type: Number, default: 0 },
+  metaAhorro: { type: Number, default: 0 },
+  gastos: [
+    {
+      nombre: String,
+      monto: Number,
+      categoria: String,
+      fecha: { type: Date, default: Date.now }
+    }
+  ]
 });
 
-// Ruta de Registro
+const Usuario = mongoose.models.Usuario || mongoose.model('Usuario', UsuarioSchema);
+const DatosFinancieros = mongoose.models.DatosFinancieros || mongoose.model('DatosFinancieros', DatosFinancierosSchema);
+
+// --- 4. RUTAS DE AUTENTICACIÓN ---
 app.post('/api/registro', async (req, res) => {
   try {
     const { nombre, email, password } = req.body;
-    
     const nuevoUsuario = new Usuario({ nombre, email, password });
     await nuevoUsuario.save();
-
-    res.status(201).json({ exito: true, mensaje: 'Usuario registrado con exito' });
+    res.status(201).json({ exito: true, mensaje: 'Usuario registrado con éxito' });
   } catch (error) {
     res.status(500).json({ exito: false, error: 'Error en el servidor al registrar' });
   }
 });
 
-// Ruta de Login
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const usuario = await Usuario.findOne({ email, password });
 
     if (usuario) {
-      res.json({ exito: true, mensaje: 'Inicio de sesion correcto', usuario });
+      res.json({ exito: true, usuario: { id: usuario._id, nombre: usuario.nombre, email: usuario.email } });
     } else {
       res.status(401).json({ exito: false, mensaje: 'Credenciales incorrectas' });
     }
   } catch (error) {
-    res.status(500).json({ exito: false, error: 'Error en el servidor al iniciar sesion' });
+    res.status(500).json({ exito: false, error: 'Error al iniciar sesión' });
   }
 });
 
-// Ruta fallback compatible con Express 5
+// --- 5. RUTAS DE DATOS FINANCIEROS ---
+
+// Obtener datos del usuario
+app.get('/api/datos/:usuarioId', async (req, res) => {
+  try {
+    let datos = await DatosFinancieros.findOne({ usuarioId: req.params.usuarioId });
+    if (!datos) {
+      datos = await DatosFinancieros.create({ usuarioId: req.params.usuarioId, ingresoMensual: 0, metaAhorro: 0, gastos: [] });
+    }
+    res.json({ exito: true, datos });
+  } catch (error) {
+    res.status(500).json({ exito: false, error: 'Error al obtener datos' });
+  }
+});
+
+// Guardar Plan Financiero
+app.post('/api/plan', async (req, res) => {
+  try {
+    const { usuarioId, ingresoMensual, metaAhorro } = req.body;
+    const datos = await DatosFinancieros.findOneAndUpdate(
+      { usuarioId },
+      { ingresoMensual: parseFloat(ingresoMensual), metaAhorro: parseFloat(metaAhorro) },
+      { new: true, upsert: true }
+    );
+    res.json({ exito: true, datos });
+  } catch (error) {
+    res.status(500).json({ exito: false, error: 'Error al guardar plan' });
+  }
+});
+
+// Agregar Gasto
+app.post('/api/gastos', async (req, res) => {
+  try {
+    const { usuarioId, nombre, monto, categoria } = req.body;
+    const datos = await DatosFinancieros.findOneAndUpdate(
+      { usuarioId },
+      { $push: { gastos: { nombre, monto: parseFloat(monto), categoria } } },
+      { new: true, upsert: true }
+    );
+    res.json({ exito: true, datos });
+  } catch (error) {
+    res.status(500).json({ exito: false, error: 'Error al guardar gasto' });
+  }
+});
+
 app.get('/{0,}', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- 5. PUERTO PARA RENDER ---
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Servidor ejecutandose en el puerto ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
