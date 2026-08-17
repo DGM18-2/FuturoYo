@@ -10,11 +10,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Servir archivos estáticos directamente desde la raíz del proyecto
+// Servir archivos estaticos directamente desde la raiz del proyecto
 app.use(express.static(__dirname));
 
 // --- 2. CONEXION A MONGO DB ---
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/futuroyo';
+// REEMPLAZA TU_CONTRASEÑA_REAL POR TU CONTRASEÑA DE MONGODB ATLAS
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://danialbertogm18_db_user:JZbhKTbGD5yFYwKC@cluster0.ycq5pnn.mongodb.net/futuroyo?retryWrites=true&w=majority';
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('Conectado exitosamente a MongoDB Atlas'))
@@ -68,7 +69,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Ruta fallback compatible con Express 5 apuntando a la raíz
+// Ruta fallback compatible con Express 5
 app.get('/{0,}', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
