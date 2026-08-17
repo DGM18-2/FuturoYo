@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // Capturar campos del formulario de login
     const emailInput = document.querySelector('input[type="email"]');
     const passwordInput = document.querySelector('input[type="password"]');
 
@@ -19,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const response = await fetch('/api/login', {
+      const response = await fetch('https://futuroyo-krbb.onrender.com/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -31,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (response.ok && data.exito) {
         alert('¡Inicio de sesión exitoso!');
-        // Guardar datos del usuario en el navegador
         localStorage.setItem('usuario', JSON.stringify(data.usuario));
         window.location.href = 'index.html';
       } else {

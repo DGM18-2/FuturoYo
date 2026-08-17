@@ -1,63 +1,44 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const formRegistro = document.getElementById("formRegistro");
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.querySelector('form');
 
-    if (formRegistro) {
-        formRegistro.addEventListener("submit", (e) => {
-            e.preventDefault();
-            crearCuenta();
-        });
-    }
-});
+  if (!form) return;
 
-async function crearCuenta() {
-    const nombre = document.getElementById("nombre").value;
-    const correo = document.getElementById("correo").value;
-    const contrasena = document.getElementById("contrasena").value;
-    const confirmar = document.getElementById("confirmar") ? document.getElementById("confirmar").value : contrasena;
-    const mensaje = document.getElementById("mensaje");
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-    if (nombre === "" || correo === "" || contrasena === "") {
-        mensaje.innerText = "Complete todos los campos.";
-        mensaje.style.color = "red";
-        return;
-    }
+    const nombreInput = document.querySelector('input[type="text"]');
+    const emailInput = document.querySelector('input[type="email"]');
+    const passwordInput = document.querySelector('input[type="password"]');
 
-    if (contrasena !== confirmar) {
-        mensaje.innerText = "Las contraseñas no coinciden.";
-        mensaje.style.color = "red";
-        return;
+    const nombre = nombreInput ? nombreInput.value.trim() : '';
+    const email = emailInput ? emailInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value.trim() : '';
+
+    if (!email || !password) {
+      alert('Por favor completa todos los campos.');
+      return;
     }
 
     try {
-        const respuesta = await fetch("https://futuroyo.onrender.com/registro", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                nombre: nombre,
-                correo: correo,
-                contrasena: contrasena
-            })
-        });
+      const response = await fetch('https://futuroyo-krbb.onrender.com/api/registro', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ nombre, email, password })
+      });
 
-        const datos = await respuesta.json();
+      const data = await response.json();
 
-        if (respuesta.ok || datos.ok) {
-            mensaje.innerText = datos.mensaje || "Cuenta creada con éxito.";
-            mensaje.style.color = "green";
-
-            setTimeout(function() {
-                window.location.href = "login.html";
-            }, 1500);
-        } else {
-            mensaje.innerText = datos.mensaje || "Error al registrar la cuenta.";
-            mensaje.style.color = "red";
-        }
-
+      if (response.ok && data.exito) {
+        alert('¡Usuario registrado con éxito!');
+        window.location.href = 'login.html';
+      } else {
+        alert(data.mensaje || data.error || 'Error al registrar el usuario');
+      }
     } catch (error) {
-        console.error(error);
-        mensaje.innerText = "No se pudo conectar con el servidor.";
-        mensaje.style.color = "red";
+      console.error('Error en el registro:', error);
+      alert('Ocurrió un error al conectar con el servidor.');
     }
-}
+  });
+});
