@@ -12,14 +12,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 // --- 2. CONEXIÓN A MONGO DB ---
-// Lee la variable desde Render o usa la URI por defecto
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://danialbertogm18_db_user:JZbhKTbGD5yFYwKC@cluster0.ycq5pnn.mongodb.net/futuroyo?retryWrites=true&w=majority';
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('Conectado exitosamente a MongoDB Atlas'))
   .catch((err) => console.error('Error al conectar a MongoDB:', err.message));
 
-// --- 3. ESQUEMAS Y MODELOS DE MONGO DB ---
+// --- 3. ESQUEMAS Y MODELOS ---
 const UsuarioSchema = new mongoose.Schema({
   nombre: String,
   email: String,
@@ -70,7 +69,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// --- 5. RUTAS DE DATOS FINANCIEROS (MONGO DB) ---
+// --- 5. RUTAS DE DATOS FINANCIEROS (POR USUARIO) ---
 app.get('/api/datos/:usuarioId', async (req, res) => {
   try {
     let datos = await DatosFinancieros.findOne({ usuarioId: req.params.usuarioId });
@@ -111,26 +110,25 @@ app.post('/api/gastos', async (req, res) => {
   }
 });
 
-// --- 6. RUTA DEL CHATBOT INTELIGENTE (GEMINI AI) ---
+// --- 6. RUTA DEL CHATBOT INTELIGENTE CON GEMINI AI ---
 app.post('/api/chat', async (req, res) => {
   try {
     const { pregunta, contextoFinanciero } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-      return res.json({ respuesta: "La variable GEMINI_API_KEY no está configurada en Render." });
+      return res.json({ respuesta: "Error: La variable GEMINI_API_KEY no está configurada en Render." });
     }
 
-    const promptSystem = `Eres el asistente financiero de la app "FuturoYo".
-Aconseja al usuario de forma clara y amable sobre finanzas.
-Información financiera actual del usuario:
-- Ingreso Mensual: ₡${contextoFinanciero.ingresoMensual}
-- Meta de Ahorro: ₡${contextoFinanciero.metaAhorro}
-- Dinero Disponible: ₡${contextoFinanciero.dineroDisponible}
-- Total Gastado: ₡${contextoFinanciero.totalGastado}
+    const promptSystem = `Eres el asistente financiero inteligente de "FuturoYo".
+Responde a las dudas del usuario de forma amable, práctica y concisa (2-3 oraciones máximo).
+Contexto financiero actual del usuario:
+- Ingreso Mensual: ₡${contextoFinanciero?.ingresoMensual || 0}
+- Meta de Ahorro: ₡${contextoFinanciero?.metaAhorro || 0}
+- Dinero Disponible: ₡${contextoFinanciero?.dineroDisponible || 0}
+- Total Gastado: ₡${contextoFinanciero?.totalGastado || 0}
 
-Pregunta del usuario: "${pregunta}"
-Responde en 2 a 4 oraciones dando un consejo útil adaptado a sus finanzas.`;
+Pregunta del usuario: "${pregunta}"`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -141,11 +139,16 @@ Responde en 2 a 4 oraciones dando un consejo útil adaptado a sus finanzas.`;
     });
 
     const data = await response.json();
-    const botReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No pude generar una respuesta en este momento.";
+
+    if (data.error) {
+      return res.json({ respuesta: `Error de Google API: ${data.error.message}` });
+    }
+
+    const botReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No pude generar una respuesta.";
     res.json({ respuesta: botReply });
   } catch (error) {
-    console.error("Error en la llamada de IA:", error);
-    res.status(500).json({ respuesta: "Ocurrió un error al procesar tu solicitud con el asistente virtual." });
+    console.error("Error en servidor al procesar el chat:", error);
+    res.status(500).json({ respuesta: "Error interno del servidor al procesar la solicitud." });
   }
 });
 
