@@ -1,160 +1,235 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const path = require('path');
+const BASE_URL = 'https://futuroyo-krbb.onrender.com';
+let usuarioSesion = null;
 
-const app = express();
+let gastos = [];
+let grafico;
+let ingresoMensual = 0;
+let metaAhorro = 0;
+let dineroDisponible = 0;
 
-// --- 1. MIDDLEWARES ---
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(__dirname));
-
-// --- 2. CONEXIÓN A MONGO DB ---
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://danialbertogm18_db_user:JZbhKTbGD5yFYwKC@cluster0.ycq5pnn.mongodb.net/futuroyo?retryWrites=true&w=majority';
-
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('Conectado exitosamente a MongoDB Atlas'))
-  .catch((err) => console.error('Error al conectar a MongoDB:', err.message));
-
-// --- 3. ESQUEMAS Y MODELOS ---
-const UsuarioSchema = new mongoose.Schema({
-  nombre: String,
-  email: String,
-  password: String
-});
-
-const DatosFinancierosSchema = new mongoose.Schema({
-  usuarioId: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true, unique: true },
-  ingresoMensual: { type: Number, default: 0 },
-  metaAhorro: { type: Number, default: 0 },
-  gastos: [
-    {
-      nombre: String,
-      monto: Number,
-      categoria: String,
-      fecha: { type: Date, default: Date.now }
-    }
-  ]
-});
-
-const Usuario = mongoose.models.Usuario || mongoose.model('Usuario', UsuarioSchema);
-const DatosFinancieros = mongoose.models.DatosFinancieros || mongoose.model('DatosFinancieros', DatosFinancierosSchema);
-
-// --- 4. RUTAS DE AUTENTICACIÓN ---
-app.post('/api/registro', async (req, res) => {
-  try {
-    const { nombre, email, password } = req.body;
-    const nuevoUsuario = new Usuario({ nombre, email, password });
-    await nuevoUsuario.save();
-    res.status(201).json({ exito: true, mensaje: 'Usuario registrado con éxito' });
-  } catch (error) {
-    res.status(500).json({ exito: false, error: 'Error en el servidor al registrar' });
-  }
-});
-
-app.post('/api/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const usuario = await Usuario.findOne({ email, password });
-
-    if (usuario) {
-      res.json({ exito: true, usuario: { id: usuario._id, nombre: usuario.nombre, email: usuario.email } });
-    } else {
-      res.status(401).json({ exito: false, mensaje: 'Credenciales incorrectas' });
-    }
-  } catch (error) {
-    res.status(500).json({ exito: false, error: 'Error al iniciar sesión' });
-  }
-});
-
-// --- 5. RUTAS DE DATOS FINANCIEROS (POR USUARIO) ---
-app.get('/api/datos/:usuarioId', async (req, res) => {
-  try {
-    let datos = await DatosFinancieros.findOne({ usuarioId: req.params.usuarioId });
-    if (!datos) {
-      datos = await DatosFinancieros.create({ usuarioId: req.params.usuarioId, ingresoMensual: 0, metaAhorro: 0, gastos: [] });
-    }
-    res.json({ exito: true, datos });
-  } catch (error) {
-    res.status(500).json({ exito: false, error: 'Error al obtener datos' });
-  }
-});
-
-app.post('/api/plan', async (req, res) => {
-  try {
-    const { usuarioId, ingresoMensual, metaAhorro } = req.body;
-    const datos = await DatosFinancieros.findOneAndUpdate(
-      { usuarioId },
-      { ingresoMensual: parseFloat(ingresoMensual), metaAhorro: parseFloat(metaAhorro) },
-      { new: true, upsert: true }
-    );
-    res.json({ exito: true, datos });
-  } catch (error) {
-    res.status(500).json({ exito: false, error: 'Error al guardar plan' });
-  }
-});
-
-app.post('/api/gastos', async (req, res) => {
-  try {
-    const { usuarioId, nombre, monto, categoria } = req.body;
-    const datos = await DatosFinancieros.findOneAndUpdate(
-      { usuarioId },
-      { $push: { gastos: { nombre, monto: parseFloat(monto), categoria } } },
-      { new: true, upsert: true }
-    );
-    res.json({ exito: true, datos });
-  } catch (error) {
-    res.status(500).json({ exito: false, error: 'Error al guardar gasto' });
-  }
-});
-
-// --- 6. RUTA DEL CHATBOT INTELIGENTE CON GEMINI AI ---
-app.post('/api/chat', async (req, res) => {
-  try {
-    const { pregunta, contextoFinanciero } = req.body;
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return res.json({ respuesta: "Error: La variable GEMINI_API_KEY no está configurada en Render." });
+document.addEventListener('DOMContentLoaded', async () => {
+    usuarioSesion = JSON.parse(localStorage.getItem('usuario'));
+    
+    if (!usuarioSesion || !usuarioSesion.id) {
+        alert("Debes iniciar sesión primero.");
+        window.location.href = "login.html";
+        return;
     }
 
-    const promptSystem = `Eres el asistente financiero inteligente de "FuturoYo".
-Responde a las dudas del usuario de forma amable, práctica y concisa (2-3 oraciones máximo).
-Contexto financiero actual del usuario:
-- Ingreso Mensual: ₡${contextoFinanciero?.ingresoMensual || 0}
-- Meta de Ahorro: ₡${contextoFinanciero?.metaAhorro || 0}
-- Dinero Disponible: ₡${contextoFinanciero?.dineroDisponible || 0}
-- Total Gastado: ₡${contextoFinanciero?.totalGastado || 0}
+    await cargarDatosDesdeServidor();
+});
 
-Pregunta del usuario: "${pregunta}"`;
+// --- CONEXIÓN CON MONGODB ---
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: promptSystem }] }]
-      })
+async function cargarDatosDesdeServidor() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/datos/${usuarioSesion.id}`);
+        const responseData = await res.json();
+
+        if (responseData.exito && responseData.datos) {
+            ingresoMensual = responseData.datos.ingresoMensual || 0;
+            metaAhorro = responseData.datos.metaAhorro || 0;
+            gastos = responseData.datos.gastos || [];
+
+            let totalGastado = gastos.reduce((acc, g) => acc + g.monto, 0);
+            dineroDisponible = ingresoMensual - metaAhorro - totalGastado;
+            if (dineroDisponible < 0) dineroDisponible = 0;
+
+            if (document.getElementById("mostrarIngreso")) document.getElementById("mostrarIngreso").innerText = ingresoMensual;
+            if (document.getElementById("metaInicial")) document.getElementById("metaInicial").innerText = metaAhorro;
+            if (document.getElementById("mostrarMeta")) document.getElementById("mostrarMeta").innerText = dineroDisponible;
+
+            mostrarGastos();
+            actualizarTotal();
+            crearGrafico();
+        }
+    } catch (error) {
+        console.error("Error al cargar datos:", error);
+    }
+}
+
+async function guardarPlan() {
+    ingresoMensual = Number(document.getElementById("ingreso").value);
+    metaAhorro = Number(document.getElementById("meta").value);
+
+    if (ingresoMensual <= 0 || metaAhorro < 0) {
+        alert("Ingrese valores válidos.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${BASE_URL}/api/plan`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                usuarioId: usuarioSesion.id,
+                ingresoMensual: ingresoMensual,
+                metaAhorro: metaAhorro
+            })
+        });
+
+        if (res.ok) {
+            await cargarDatosDesdeServidor();
+            document.getElementById("ingreso").value = "";
+            document.getElementById("meta").value = "";
+            alert("Plan financiero guardado.");
+        }
+    } catch (error) {
+        alert("Error al guardar el plan.");
+    }
+}
+
+async function agregarGasto() {
+    let nombre = document.getElementById("nombre").value;
+    let monto = Number(document.getElementById("monto").value);
+    let categoria = document.getElementById("categoria").value;
+
+    if (nombre == "" || monto <= 0) {
+        alert("Complete todos los campos.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${BASE_URL}/api/gastos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                usuarioId: usuarioSesion.id,
+                nombre: nombre,
+                monto: monto,
+                categoria: categoria
+            })
+        });
+
+        if (res.ok) {
+            await cargarDatosDesdeServidor();
+            revisarLimite();
+            limpiarCampos();
+        }
+    } catch (error) {
+        alert("Error al guardar el gasto.");
+    }
+}
+
+function mostrarGastos() {
+    let lista = document.getElementById("lista");
+    if (!lista) return;
+
+    lista.innerHTML = "";
+    gastos.forEach(function (gasto, index) {
+        lista.innerHTML += `
+        <li>
+            <div>
+                <strong>${gasto.nombre}</strong><br>
+                ${gasto.categoria} - ₡${gasto.monto}
+            </div>
+            <button class="eliminar" onclick="eliminarGasto(${index})">X</button>
+        </li>`;
+    });
+}
+
+function eliminarGasto(index) {
+    gastos.splice(index, 1);
+    mostrarGastos();
+    actualizarTotal();
+    crearGrafico();
+}
+
+function actualizarTotal() {
+    let total = gastos.reduce((acc, g) => acc + g.monto, 0);
+    if (document.getElementById("total")) {
+        document.getElementById("total").innerText = total;
+    }
+}
+
+function limpiarCampos() {
+    document.getElementById("nombre").value = "";
+    document.getElementById("monto").value = "";
+}
+
+function revisarLimite() {
+    let total = gastos.reduce((acc, g) => acc + g.monto, 0);
+    if (total > 50000) {
+        alert("¡Has superado el límite de ₡50 000 en gastos!");
+    }
+}
+
+// --- GRÁFICA DE CHART.JS ---
+
+function crearGrafico() {
+    let canvas = document.getElementById("miGrafico");
+    if (!canvas) return;
+
+    let comida = 0, transporte = 0, entretenimiento = 0, compras = 0;
+
+    gastos.forEach(function (gasto) {
+        if (gasto.categoria == "Comida") comida += gasto.monto;
+        if (gasto.categoria == "Transporte") transporte += gasto.monto;
+        if (gasto.categoria == "Entretenimiento") entretenimiento += gasto.monto;
+        if (gasto.categoria == "Compras") compras += gasto.monto;
     });
 
-    const data = await response.json();
+    if (grafico) grafico.destroy();
 
-    if (data.error) {
-      return res.json({ respuesta: `Error de Google API: ${data.error.message}` });
+    const ctx = canvas.getContext("2d");
+    grafico = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: ["Comida", "Transporte", "Entretenimiento", "Compras"],
+            datasets: [{
+                label: "Gastos por categoría",
+                data: [comida, transporte, entretenimiento, compras],
+                backgroundColor: [
+                    "rgba(255,99,132,0.5)",
+                    "rgba(54,162,235,0.5)",
+                    "rgba(255,206,86,0.5)",
+                    "rgba(75,192,192,0.5)"
+                ]
+            }]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+}
+
+// --- CHATBOT INTELIGENTE ---
+
+function abrirChat() {
+    document.getElementById("ventanaChat").style.display = "block";
+}
+
+function cerrarChat() {
+    document.getElementById("ventanaChat").style.display = "none";
+}
+
+function enviarPregunta() {
+    let preguntaInput = document.getElementById("pregunta");
+    let texto = preguntaInput.value.trim().toLowerCase();
+
+    if (texto === "") return;
+
+    let mensajes = document.getElementById("mensajes");
+    mensajes.innerHTML += `<div class="usuario">${preguntaInput.value}</div>`;
+    preguntaInput.value = "";
+
+    let totalGastado = gastos.reduce((acc, g) => acc + g.monto, 0);
+    let respuestaBot = "";
+
+    if (texto.includes("ahorro") || texto.includes("ahorrar")) {
+        respuestaBot = `Tu meta de ahorro actual es de ₡${metaAhorro}. Te sugiero apartar este dinero al inicio del mes.`;
+    } else if (texto.includes("gasto") || texto.includes("gastos")) {
+        respuestaBot = `Llevas un total de ₡${totalGastado} en gastos acumulados.`;
+    } else if (texto.includes("presupuesto") || texto.includes("disponible") || texto.includes("saldo")) {
+        respuestaBot = `Tu ingreso es de ₡${ingresoMensual} y cuentas con ₡${dineroDisponible} disponibles tras restar ahorros y gastos.`;
+    } else if (texto.includes("hola") || texto.includes("buenas")) {
+        respuestaBot = "¡Hola! Estoy listo para ayudarte con tus finanzas.";
+    } else {
+        respuestaBot = "Puedes consultarme sobre tu 'ahorro', tus 'gastos' o tu 'presupuesto disponible'.";
     }
 
-    const botReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No pude generar una respuesta.";
-    res.json({ respuesta: botReply });
-  } catch (error) {
-    console.error("Error en servidor al procesar el chat:", error);
-    res.status(500).json({ respuesta: "Error interno del servidor al procesar la solicitud." });
-  }
-});
+    setTimeout(() => {
+        mensajes.innerHTML += `<div class="bot">${respuestaBot}</div>`;
+        mensajes.scrollTop = mensajes.scrollHeight;
+    }, 300);
 
-app.get('/{0,}', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
+    mensajes.scrollTop = mensajes.scrollHeight;
+}

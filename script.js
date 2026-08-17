@@ -7,12 +7,12 @@ let ingresoMensual = 0;
 let metaAhorro = 0;
 let dineroDisponible = 0;
 
-// Verificar sesión e inicializar datos al cargar la página
+// Verificar sesion e inicializar datos al cargar la pagina
 document.addEventListener('DOMContentLoaded', async () => {
     usuarioSesion = JSON.parse(localStorage.getItem('usuario'));
     
     if (!usuarioSesion || !usuarioSesion.id) {
-        alert("Debes iniciar sesión primero.");
+        alert("Debes iniciar sesion primero.");
         window.location.href = "login.html";
         return;
     }
@@ -20,7 +20,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     await cargarDatosDesdeServidor();
 });
 
-// --- CONEXIÓN CON MONGODB ATLAS ---
+// --- FUNCION DE CERRAR SESION ---
+
+function cerrarSesion() {
+    localStorage.removeItem('usuario');
+    window.location.href = "login.html";
+}
+
+// --- CONEXION CON MONGODB ATLAS ---
 
 async function cargarDatosDesdeServidor() {
     try {
@@ -56,7 +63,7 @@ async function guardarPlan() {
     metaAhorro = Number(document.getElementById("meta").value);
 
     if (ingresoMensual <= 0 || metaAhorro < 0) {
-        alert("Ingrese valores válidos.");
+        alert("Ingrese valores validos.");
         return;
     }
 
@@ -192,11 +199,11 @@ function revisarLimite() {
     });
 
     if (total > 50000) {
-        alert("¡Has superado el límite de ₡50 000 en gastos!");
+        alert("Has superado el limite de ₡50 000 en gastos.");
     }
 }
 
-// --- GRÁFICO DE CHART.JS ---
+// --- GRAFICO DE CHART.JS ---
 
 function crearGrafico() {
     let canvas = document.getElementById("miGrafico");
@@ -227,7 +234,7 @@ function crearGrafico() {
         data: {
             labels: ["Comida", "Transporte", "Entretenimiento", "Compras"],
             datasets: [{
-                label: "Gastos por categoría",
+                label: "Gastos por categoria",
                 data: datos,
                 backgroundColor: [
                     "rgba(255,99,132,0.5)",
@@ -255,7 +262,7 @@ function crearGrafico() {
     });
 }
 
-// --- ASISTENTE VIRTUAL INTELIGENTE (CHATBOT CON IA) ---
+// --- CHATBOT ASISTENTE VIRTUAL ---
 
 function abrirChat() {
     document.getElementById("ventanaChat").style.display = "block";
@@ -283,7 +290,7 @@ async function enviarPregunta() {
     preguntaInput.value = "";
 
     // -------------------------------------------------------------
-    // PEGA AQUÍ TU API KEY (Debe empezar con "AIzaSy...")
+    // PEGA AQUI TU API KEY (Debe empezar con "AIzaSy...")
     const API_KEY = "PEGA_AQUI_TU_API_KEY"; 
     // -------------------------------------------------------------
 
@@ -297,11 +304,11 @@ async function enviarPregunta() {
         if (texto.includes("ahorro") || texto.includes("ahorrar")) {
             respuestaLocal = `Tu meta de ahorro actual es de ₡${metaAhorro}. Te recomiendo separar esta cantidad apenas recibas tu ingreso.`;
         } else if (texto.includes("gasto") || texto.includes("gastos")) {
-            respuestaLocal = `Has registrado un total de ₡${totalGastado} en gastos. Revisa la gráfica para más detalles.`;
+            respuestaLocal = `Has registrado un total de ₡${totalGastado} en gastos. Revisa la grafica para mas detalles.`;
         } else if (texto.includes("presupuesto") || texto.includes("disponible") || texto.includes("saldo")) {
             respuestaLocal = `Tu ingreso es de ₡${ingresoMensual} y cuentas con ₡${dineroDisponible} disponibles tras restar ahorros y gastos.`;
         } else {
-            respuestaLocal = "¡Hola! Cuentas con mi ayuda. Puedes preguntarme sobre tu 'ahorro', tus 'gastos' o tu 'presupuesto disponible'.";
+            respuestaLocal = "Hola, cuentas con mi ayuda. Puedes preguntarme sobre tu 'ahorro', tus 'gastos' o tu 'presupuesto disponible'.";
         }
 
         setTimeout(() => {
@@ -311,9 +318,9 @@ async function enviarPregunta() {
         return;
     }
 
-    // SI LA CLAVE ES VÁLIDA (AIzaSy...), LLAMA A GEMINI AI
+    // SI LA CLAVE ES VALIDA (AIzaSy...), LLAMA A GEMINI AI
     const promptText = `Eres el asistente financiero inteligente de FuturoYo.
-Responde de forma amable, práctica y breve (máximo 3 oraciones).
+Responde de forma amable, practica y breve (maximo 3 oraciones).
 Contexto del usuario: Ingreso: ₡${ingresoMensual}, Meta Ahorro: ₡${metaAhorro}, Disponible: ₡${dineroDisponible}, Gastado: ₡${totalGastado}.
 Pregunta: "${pregunta}"`;
 

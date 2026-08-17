@@ -1,239 +1,149 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>FuturoYO</title>
-
     <link rel="stylesheet" href="style.css">
-
     <!-- Librería Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js?v=2"></script>
+    <script src="script.js" defer></script>
 </head>
-
 <body>
     <main>
 
         <div class="container">
 
+            <!-- CABECERA CON LOGOTIPO Y BOTÓN EN LA ESQUINA -->
+            <header style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+                <h1 class="logo" style="margin: 0;">Futuro<span>YO</span></h1>
+                <button onclick="cerrarSesion()" style="width: auto !important; background-color: #d9534f; color: white; border: none; padding: 6px 12px; font-size: 13px; border-radius: 5px; cursor: pointer;">
+                    Cerrar Sesión
+                </button>
+            </header>
+
             <!-- PLAN FINANCIERO -->
-
             <section class="resumen">
-
                 <div class="card">
-
                     <h2>Plan Financiero</h2>
 
                     <label>Ingreso mensual</label>
-
-                    <input
-                        type="number"
-                        id="ingreso"
-                        placeholder="Ingrese su ingreso mensual">
+                    <input type="number" id="ingreso" placeholder="Ingrese su ingreso mensual">
 
                     <label>Meta de ahorro</label>
+                    <input type="number" id="meta" placeholder="Ingrese su meta de ahorro">
 
-                    <input
-                        type="number"
-                        id="meta"
-                        placeholder="Ingrese su meta de ahorro">
-
-                    <button onclick="guardarPlan()">
-
-                        Guardar Plan
-
-                    </button>
+                    <button onclick="guardarPlan()">Guardar Plan</button>
 
                     <hr>
 
                     <p>
-
                         <strong>Ingreso mensual:</strong>
-
                         ₡<span id="mostrarIngreso">0</span>
-
                     </p>
 
                     <p>
-
                         <strong>Meta de ahorro:</strong>
-
                         ₡<span id="metaInicial">0</span>
-
                     </p>
 
                     <p>
-
                         <strong>Disponible para gastar:</strong>
-
                     </p>
 
                     <h2>
-
                         ₡<span id="mostrarMeta">0</span>
-
                     </h2>
-
                 </div>
-
             </section>
 
             <!-- AGREGAR GASTO Y TOTAL -->
-
             <div class="fila">
 
                 <!-- AGREGAR GASTO -->
-
                 <section class="formulario">
-
                     <div class="card">
-
                         <h2>Agregar gasto</h2>
 
-                        <input
-                            type="text"
-                            id="nombre"
-                            placeholder="Nombre del gasto">
-
-                        <input
-                            type="number"
-                            id="monto"
-                            placeholder="Monto">
+                        <input type="text" id="nombre" placeholder="Nombre del gasto">
+                        <input type="number" id="monto" placeholder="Monto">
 
                         <select id="categoria">
-
                             <option>Comida</option>
                             <option>Transporte</option>
                             <option>Entretenimiento</option>
                             <option>Compras</option>
-
                         </select>
 
-                        <button onclick="agregarGasto()">
-
-                            Agregar gasto
-
-                        </button>
-
+                        <button onclick="agregarGasto()">Agregar gasto</button>
                     </div>
-
                 </section>
 
                 <!-- TOTAL GASTADO -->
-
                 <section class="total-gastado">
-
                     <div class="card">
-
                         <h2>Total Gastado</h2>
-
-                        <h1>
-
-                            ₡<span id="total">0</span>
-
-                        </h1>
-
+                        <h1>₡<span id="total">0</span></h1>
                     </div>
-
                 </section>
 
             </div>
 
             <!-- LISTA DE GASTOS -->
-
             <section class="lista-gastos">
-
                 <div class="card">
-
                     <h2>Lista de gastos</h2>
-
                     <ul id="lista"></ul>
-
                 </div>
-
             </section>
 
             <!-- GRÁFICO -->
-
             <section class="grafico">
-
                 <div class="card">
-
                     <h2>Gráfico de gastos</h2>
-
                     <div style="width:70%; margin:auto;">
-
                         <canvas id="miGrafico"></canvas>
+                    </div>
+                </div>
+            </section>
 
+            <!-- BOTÓN Y VENTANA DEL CHAT -->
+            <div id="chatbot">
+                <button id="abrirChat" onclick="abrirChat()">
+                    Asistente
+                </button>
+
+                <div id="ventanaChat">
+                    <div id="cabeceraChat">
+                        <h3>FuturoYO Bot</h3>
+                        <button onclick="cerrarChat()">X</button>
                     </div>
 
+                    <div id="mensajes">
+                        <div class="bot">
+                            Hola. Soy el asistente de FuturoYO.
+                            <br><br>
+                            Puedes preguntarme sobre:
+                            <br>
+                            • Ahorro
+                            <br>
+                            • Gastos
+                            <br>
+                            • Presupuesto
+                            <br>
+                            • Consejos
+                        </div>
+                    </div>
+
+                    <div class="entrada">
+                        <input type="text" id="pregunta" placeholder="Escribe una pregunta..." onkeypress="if(event.key === 'Enter') enviarPregunta()">
+                        <button onclick="enviarPregunta()">Enviar</button>
+                    </div>
                 </div>
-
-            </section>
-            <!-- BOTÓN DEL CHAT -->
-
-<div id="chatbot">
-
-    <button id="abrirChat" onclick="abrirChat()">
-        💬
-    </button>
-
-    <div id="ventanaChat">
-
-        <div id="cabeceraChat">
-
-            <h3>FuturoYO Bot</h3>
-
-            <button onclick="cerrarChat()">X</button>
-
-        </div>
-
-        <div id="mensajes">
-
-            <div class="bot">
-                ¡Hola! Soy el asistente de FuturoYO.
-                <br><br>
-                Puedes preguntarme sobre:
-                <br>
-                • Ahorro
-                <br>
-                • Gastos
-                <br>
-                • Presupuesto
-                <br>
-                • Consejos
             </div>
 
         </div>
 
-        <div class="entrada">
-
-            <input
-                type="text"
-                id="pregunta"
-                placeholder="Escribe una pregunta...">
-
-            <button onclick="enviarPregunta()">
-
-                Enviar
-
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-        </div>
-
     </main>
-
 </body>
-
 </html>
