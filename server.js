@@ -152,7 +152,7 @@ app.post('/api/gastos', async (req, res) => {
 });
 
 // Ruta por defecto para cargar el frontend
-app.get('*', (req, res) => {
+app.get('{*path}', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
