@@ -13,8 +13,8 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 // --- CONEXIÓN A MONGODB ATLAS ---
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://DanielGutierrez:ProjectOwner081626@cluster0.ycq5pnn.mongodb.net/futuroyo?retryWrites=true&w=majority&appName=Cluster0';
-
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://danialbertogm18_db_user:hTMd0yg0BwyZaMNN@cluster0.ycq5pnn.mongodb.net/futuroyo?retryWrites=true&w=majority&appName=Cluster0";
+    
 mongoose.connect(MONGO_URI)
     .then(() => console.log('Conectado exitosamente a MongoDB Atlas'))
     .catch((err) => console.error('Error al conectar a MongoDB:', err));
