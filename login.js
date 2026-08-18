@@ -9,21 +9,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const emailInput = document.querySelector('input[type="email"]');
     const passwordInput = document.querySelector('input[type="password"]');
 
-    const email = emailInput ? emailInput.value.trim() : '';
+    const correo = emailInput ? emailInput.value.trim() : '';
     const password = passwordInput ? passwordInput.value.trim() : '';
 
-    if (!email || !password) {
+    if (!correo || !password) {
       alert('Por favor ingresa tu correo y contraseña.');
       return;
     }
 
+    const API_URL = window.location.protocol === 'file:' 
+      ? 'https://futuroyo-krbb.onrender.com' 
+      : '';
+
     try {
-      const response = await fetch('https://futuroyo-krbb.onrender.com/api/login', {
+      const response = await fetch(`${API_URL}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email, password })
+        // Cambiado "email" a "correo" para coincidir con Express
+        body: JSON.stringify({ correo, password })
       });
 
       const data = await response.json();
