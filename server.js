@@ -14,7 +14,7 @@ app.use(express.static(__dirname));
 
 // --- CONEXIÓN A MONGODB ATLAS ---
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://danialbertogm18_db_user:hTMd0yg0BwyZaMNN@cluster0.ycq5pnn.mongodb.net/futuroyo?retryWrites=true&w=majority&appName=Cluster0";
-    
+
 mongoose.connect(MONGO_URI)
     .then(() => console.log('Conectado exitosamente a MongoDB Atlas'))
     .catch((err) => console.error('Error al conectar a MongoDB:', err));
@@ -151,7 +151,7 @@ app.post('/api/gastos', async (req, res) => {
     }
 });
 
-// Ruta por defecto para cargar el frontend
+// Ruta por defecto para cargar el frontend en Express v5
 app.get('{*path}', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });

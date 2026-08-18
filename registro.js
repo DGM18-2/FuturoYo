@@ -8,24 +8,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const nombreInput = document.querySelector('input[type="text"]');
     const emailInput = document.querySelector('input[type="email"]');
-    const passwordInput = document.querySelector('input[type="password"]');
+    // Seleccionar todos los campos de contraseña para validar confirmación
+    const passwordInputs = document.querySelectorAll('input[type="password"]');
 
     const nombre = nombreInput ? nombreInput.value.trim() : '';
-    const email = emailInput ? emailInput.value.trim() : '';
-    const password = passwordInput ? passwordInput.value.trim() : '';
+    const correo = emailInput ? emailInput.value.trim() : '';
+    const password = passwordInputs[0] ? passwordInputs[0].value.trim() : '';
+    const confirmPassword = passwordInputs[1] ? passwordInputs[1].value.trim() : '';
 
-    if (!email || !password) {
+    if (!nombre || !correo || !password) {
       alert('Por favor completa todos los campos.');
       return;
     }
 
+    if (passwordInputs.length > 1 && password !== confirmPassword) {
+      alert('Las contraseñas no coinciden.');
+      return;
+    }
+
     try {
-      const response = await fetch('https://futuroyo-krbb.onrender.com/api/registro', {
+      const response = await fetch('/api/registro', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ nombre, email, password })
+        // Cambiado "email" por "correo" para hacer match exacto con el servidor Express
+        body: JSON.stringify({ nombre, correo, password })
       });
 
       const data = await response.json();
